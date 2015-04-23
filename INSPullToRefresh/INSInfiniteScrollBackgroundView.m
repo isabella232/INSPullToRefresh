@@ -27,6 +27,8 @@
 #import "UIScrollView+INSPullToRefresh.h"
 
 static CGFloat const INSInfinityScrollContentInsetAnimationTime = 0.3;
+#define kTrueInfiniteScrollLowerBuffer      100
+
 
 @interface INSInfiniteScrollBackgroundView ()
 @property (nonatomic, readwrite) INSInfiniteScrollBackgroundViewState state;
@@ -74,6 +76,8 @@ static CGFloat const INSInfinityScrollContentInsetAnimationTime = 0.3;
     CGRect frame = CGRectMake(0.0f, 0.0f, 0.0f, height);
     if (self = [super initWithFrame:frame]) {
         _scrollView = scrollView;
+        _scrollView.delegate = self;
+        _enableTrueInfiniteScroll = NO;
         _externalContentInset = scrollView.contentInset;
         _additionalBottomOffsetForInfinityScrollTrigger = 0;
         self.autoresizingMask = UIViewAutoresizingFlexibleWidth;
@@ -95,7 +99,7 @@ static CGFloat const INSInfinityScrollContentInsetAnimationTime = 0.3;
         return;
     }
     if ([keyPath isEqualToString:@"contentOffset"]) {
-        [self scrollViewDidScroll:[[change valueForKey:NSKeyValueChangeNewKey] CGPointValue]];
+        [self customScrollViewDidScroll:[[change valueForKey:NSKeyValueChangeNewKey] CGPointValue]];
     }
     else if ([keyPath isEqualToString:@"contentSize"]) {
         [self layoutSubviews];
@@ -113,8 +117,30 @@ static CGFloat const INSInfinityScrollContentInsetAnimationTime = 0.3;
     }
 }
 
-- (void)scrollViewDidScroll:(CGPoint)contentOffset {
+- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView withVelocity:(CGPoint)velocity targetContentOffset:(inout CGPoint *)targetContentOffset {
+    
+    // Return if we are not doing true infinite scrolling.
+    if (!self.enableTrueInfiniteScroll) return;
+    
+    // Return if velocity isn't greater than zero.
+    if (velocity.y <= 0) return;
+    
+    // If the target content offset according the scroll speed (plus a buffer), will exceed the content size, then we start the infinite scroll process.
+    if (targetContentOffset->y + self.scrollView.bounds.size.height + kTrueInfiniteScrollLowerBuffer >= self.scrollView.contentSize.height) {
+        
+        if(self.state == INSInfiniteScrollBackgroundViewStateNone) {
+            
+            [self startInfiniteScroll];
+        }
+        
+    }
+    
+    
+}
 
+- (void)customScrollViewDidScroll:(CGPoint)contentOffset {
+
+    
     CGFloat contentHeight = [self adjustedHeightFromScrollViewContentSize];
 
     // The lower bound when infinite scroll should kick in
@@ -202,8 +228,12 @@ static CGFloat const INSInfinityScrollContentInsetAnimationTime = 0.3;
         }
     }];
 
-    // This will delay handler execution until scroll deceleration
-    [self performSelector:@selector(callInfiniteScrollActionHandler) withObject:self afterDelay:0.1 inModes:@[ NSDefaultRunLoopMode ]];
+    // If we are doing true infinite scrolling (ie. not having to scroll until spinner appears), call handler immediately, otherwise wait until scroll decel.
+    if (_enableTrueInfiniteScroll)
+        [self callInfiniteScrollActionHandler];
+    else
+        [self performSelector:@selector(callInfiniteScrollActionHandler) withObject:self afterDelay:0.1 inModes:@[ NSDefaultRunLoopMode ]];
+
 }
 
 - (void)stopInfiniteScroll {

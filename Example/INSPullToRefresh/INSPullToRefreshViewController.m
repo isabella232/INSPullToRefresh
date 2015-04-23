@@ -49,18 +49,19 @@
 
     __weak typeof(self) weakSelf = self;
     
+    
     [self.tableView ins_addInfinityScrollWithHeight:60 handler:^(UIScrollView *scrollView) {
         
-        int64_t delayInSeconds = 1;
+        int64_t delayInSeconds = 0.1;
         dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, delayInSeconds * NSEC_PER_SEC);
         dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
             
             [weakSelf.tableView beginUpdates];
             
-            weakSelf.numberOfRows += 15;
+            weakSelf.numberOfRows += 30;
             NSMutableArray* newIndexPaths = [NSMutableArray new];
             
-            for(NSInteger i = weakSelf.numberOfRows - 15; i < weakSelf.numberOfRows; i++) {
+            for(NSInteger i = weakSelf.numberOfRows - 30; i < weakSelf.numberOfRows; i++) {
                 NSIndexPath* indexPath = [NSIndexPath indexPathForRow:i inSection:0];
                 [newIndexPaths addObject:indexPath];
             }
@@ -72,19 +73,17 @@
             
             [scrollView ins_endInfinityScroll];
 
-            if (weakSelf.numberOfRows > 30) {
+            if (weakSelf.numberOfRows > 200) {
                 // Disable infinite scroll after 45 rows
                 scrollView.ins_infiniteScrollBackgroundView.enabled = NO;
             }
         });
     }];
 
-    UIView <INSAnimatable> *infinityIndicator = [self infinityIndicatorViewFromCurrentStyle];
-    [self.tableView.ins_infiniteScrollBackgroundView addSubview:infinityIndicator];
-    [infinityIndicator startAnimating];
 
     self.tableView.ins_infiniteScrollBackgroundView.preserveContentInset = NO;
-
+    self.tableView.ins_infiniteScrollBackgroundView.enableTrueInfiniteScroll = YES;
+    
     if (self.style == INSPullToRefreshStylePreserveContentInset) {
         self.tableView.ins_infiniteScrollBackgroundView.preserveContentInset = YES;
     }
