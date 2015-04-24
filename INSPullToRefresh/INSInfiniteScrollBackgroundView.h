@@ -39,7 +39,7 @@ typedef NS_ENUM(NSUInteger, INSInfiniteScrollBackgroundViewState) {
 - (void)infinityScrollBackgroundView:(INSInfiniteScrollBackgroundView *)infinityScrollBackgroundView didChangeState:(INSInfiniteScrollBackgroundViewState)state;
 @end
 
-@interface INSInfiniteScrollBackgroundView : UIView <UIScrollViewDelegate>
+@interface INSInfiniteScrollBackgroundView : UIView
 @property (nonatomic, copy) INSInfinityScrollActionHandler actionHandler;
 @property (nonatomic, weak) UIScrollView *scrollView;
 

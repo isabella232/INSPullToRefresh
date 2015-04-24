@@ -27,7 +27,7 @@
 #import "UIScrollView+INSPullToRefresh.h"
 
 static CGFloat const INSInfinityScrollContentInsetAnimationTime = 0.3;
-#define kTrueInfiniteScrollLowerBuffer      100
+#define kTrueInfiniteScrollLowerBuffer      300
 
 
 @interface INSInfiniteScrollBackgroundView ()
@@ -76,7 +76,6 @@ static CGFloat const INSInfinityScrollContentInsetAnimationTime = 0.3;
     CGRect frame = CGRectMake(0.0f, 0.0f, 0.0f, height);
     if (self = [super initWithFrame:frame]) {
         _scrollView = scrollView;
-        _scrollView.delegate = self;
         _enableTrueInfiniteScroll = NO;
         _externalContentInset = scrollView.contentInset;
         _additionalBottomOffsetForInfinityScrollTrigger = 0;
@@ -99,7 +98,7 @@ static CGFloat const INSInfinityScrollContentInsetAnimationTime = 0.3;
         return;
     }
     if ([keyPath isEqualToString:@"contentOffset"]) {
-        [self customScrollViewDidScroll:[[change valueForKey:NSKeyValueChangeNewKey] CGPointValue]];
+        [self scrollViewDidScroll:[[change valueForKey:NSKeyValueChangeNewKey] CGPointValue]];
     }
     else if ([keyPath isEqualToString:@"contentSize"]) {
         [self layoutSubviews];
@@ -117,46 +116,43 @@ static CGFloat const INSInfinityScrollContentInsetAnimationTime = 0.3;
     }
 }
 
-- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView withVelocity:(CGPoint)velocity targetContentOffset:(inout CGPoint *)targetContentOffset {
-    
-    // Return if we are not doing true infinite scrolling.
-    if (!self.enableTrueInfiniteScroll) return;
-    
-    // Return if velocity isn't greater than zero.
-    if (velocity.y <= 0) return;
-    
-    // If the target content offset according the scroll speed (plus a buffer), will exceed the content size, then we start the infinite scroll process.
-    if (targetContentOffset->y + self.scrollView.bounds.size.height + kTrueInfiniteScrollLowerBuffer >= self.scrollView.contentSize.height) {
+
+- (void)scrollViewDidScroll:(CGPoint)contentOffset {
+
+    // Different behavior if we are doing true infinite scrolling.
+    if (self.enableTrueInfiniteScroll) {
         
-        if(self.state == INSInfiniteScrollBackgroundViewStateNone) {
+        // If the target content offset according the scroll speed (plus a buffer), will exceed the content size, then we start the infinite scroll process.
+        if (contentOffset.y + self.scrollView.bounds.size.height + kTrueInfiniteScrollLowerBuffer >= self.scrollView.contentSize.height) {
             
-            [self startInfiniteScroll];
+            if(self.state == INSInfiniteScrollBackgroundViewStateNone) {
+                
+                [self startInfiniteScroll];
+            }
+            
         }
+    }
+    else {
+    
+        CGFloat contentHeight = [self adjustedHeightFromScrollViewContentSize];
         
-    }
-    
-    
-}
-
-- (void)customScrollViewDidScroll:(CGPoint)contentOffset {
-
-    
-    CGFloat contentHeight = [self adjustedHeightFromScrollViewContentSize];
-
-    // The lower bound when infinite scroll should kick in
-    CGFloat actionOffset = contentHeight - self.scrollView.bounds.size.height + self.scrollView.contentInset.bottom - self.additionalBottomOffsetForInfinityScrollTrigger;
-    // Prevent conflict with pull to refresh when tableView is too short
-    actionOffset = fmaxf(actionOffset, self.additionalBottomOffsetForInfinityScrollTrigger);
-    
-    // Disable infinite scroll when scroll view is empty
-    // Default UITableView reports height = 1 on empty tables
-    BOOL hasActualContent = (self.scrollView.contentSize.height > 1);
-
-    if([self.scrollView isDragging] && hasActualContent && contentOffset.y > actionOffset) {
-        if(self.state == INSInfiniteScrollBackgroundViewStateNone) {
-            [self startInfiniteScroll];
+        // The lower bound when infinite scroll should kick in
+        CGFloat actionOffset = contentHeight - self.scrollView.bounds.size.height + self.scrollView.contentInset.bottom - self.additionalBottomOffsetForInfinityScrollTrigger;
+        // Prevent conflict with pull to refresh when tableView is too short
+        actionOffset = fmaxf(actionOffset, self.additionalBottomOffsetForInfinityScrollTrigger);
+        
+        // Disable infinite scroll when scroll view is empty
+        // Default UITableView reports height = 1 on empty tables
+        BOOL hasActualContent = (self.scrollView.contentSize.height > 1);
+        
+        if([self.scrollView isDragging] && hasActualContent && contentOffset.y > actionOffset) {
+            if(self.state == INSInfiniteScrollBackgroundViewStateNone) {
+                [self startInfiniteScroll];
+            }
         }
     }
+    
+    
 }
 
 #pragma mark - Public
